@@ -1,10 +1,10 @@
-use std::{error::Error, time::Duration};
+use std::{error::Error, time::Duration, sync::mpsc};
 use rusty_audio::Audio;
 use std::io;
 use crossterm::{terminal::{self, EnterAlternateScreen, LeaveAlternateScreen}, ExecutableCommand, cursor::{Hide, Show}, event::{self, Event, KeyCode}};
 fn main() -> Result<(),Box<dyn Error>>{
     let mut audio = Audio::new();
-    audio.add("explode", "explode.wav");
+    audio.add("explode", "explode.wav"); 
     audio.add("lose", "lose.wav");
     audio.add("move", "move.wav");
     audio.add("pew", "pew.wav");
@@ -19,6 +19,9 @@ fn main() -> Result<(),Box<dyn Error>>{
     stdout.execute(EnterAlternateScreen)?;//A new screen when you go to something like debug mode
     stdout.execute(Hide)?;
 
+    //Making render loop in a separate thread
+
+    let (render_tx,render_rx) = mpsc::channel();//For simple purpose,mpsc channel is used, but in production level apps use crossbeam
 
     //Game Loop
     'gameloop : loop{
