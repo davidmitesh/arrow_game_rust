@@ -1,4 +1,4 @@
-use std::{error::Error, time::Duration, sync::mpsc, thread};
+use std::{error::Error, time::{Duration, Instant}, sync::mpsc, thread};
 use arrow_game_rust::{frame::{new_frame, self, Drawable}, render::render, player::Player};
 use rusty_audio::Audio;
 use std::io;
@@ -38,8 +38,11 @@ fn main() -> Result<(),Box<dyn Error>>{
     });
     //Game Loop
     let  mut player = Player::new();
+    let mut instant = Instant::now();
     'gameloop : loop{
         //Per-frame init section
+        let delta = instant.elapsed(); 
+        instant = Instant::now();
         let mut curr_frame = new_frame();
         //Input
         while event::poll(Duration::default())?{
@@ -47,6 +50,11 @@ fn main() -> Result<(),Box<dyn Error>>{
                 match key_event.code{
                     KeyCode::Left => player.move_left(),
                     KeyCode::Right => player.move_right(),
+                    KeyCode::Enter | KeyCode::Char(' ') =>  {
+                        if player.shoot(){
+                            audio.play("pew");
+                        }
+                    }
                     KeyCode::Char('q') | KeyCode::Esc => {
                         audio.play("lose");
                         break 'gameloop;
@@ -56,6 +64,9 @@ fn main() -> Result<(),Box<dyn Error>>{
 
             }
         }
+
+        //Updates
+        player.update(delta);
 
         //Draw and render
         player.draw(&mut curr_frame);
