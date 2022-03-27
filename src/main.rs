@@ -1,4 +1,5 @@
-use std::{error::Error, time::Duration, sync::mpsc};
+use std::{error::Error, time::Duration, sync::mpsc, thread};
+use arrow_game_rust::{frame::{new_frame, self}, render::render};
 use rusty_audio::Audio;
 use std::io;
 use crossterm::{terminal::{self, EnterAlternateScreen, LeaveAlternateScreen}, ExecutableCommand, cursor::{Hide, Show}, event::{self, Event, KeyCode}};
@@ -22,9 +23,23 @@ fn main() -> Result<(),Box<dyn Error>>{
     //Making render loop in a separate thread
 
     let (render_tx,render_rx) = mpsc::channel();//For simple purpose,mpsc channel is used, but in production level apps use crossbeam
-
+    let render_handle = thread::spawn(move ||{
+        let mut last_frame = frame::new_frame();
+        let mut stdout = io::stdout();
+        render(&mut stdout, &last_frame, &last_frame, true);
+        loop{
+            let curr_frame =  match render_rx.recv(){
+                Ok(x) => x,
+                Err(_)=> break,
+            };
+            render(&mut stdout, &last_frame, &curr_frame, false);
+            last_frame = curr_frame;
+        }
+    });
     //Game Loop
     'gameloop : loop{
+        //Per-frame init section
+        let curr_frame = new_frame();
         //Input
         while event::poll(Duration::default())?{
             if let Event::Key(key_event) = event::read()?{
@@ -38,9 +53,15 @@ fn main() -> Result<(),Box<dyn Error>>{
 
             }
         }
+
+        //Draw and render
+       let _ =  render_tx.send(curr_frame);
+       thread::sleep(Duration::from_millis(1));
     }
 
     //Cleanup
+    drop(render_tx);
+    render_handle.join().unwrap();
     audio.wait();
     stdout.execute(Show)?;
     stdout.execute(LeaveAlternateScreen)?;
