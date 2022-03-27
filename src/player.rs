@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crate::{NUM_COLS, NUM_ROWS, frame::Drawable, shot::Shot};
+use crate::{NUM_COLS, NUM_ROWS, frame::Drawable, shot::Shot, invaders::Invaders};
 
 pub struct Player{
     x:usize,
@@ -45,6 +45,19 @@ impl Player{
         self.shots.retain(|shot| !shot.dead());//Kind of functional programming with closures which retains the elements in the vector if the anonymous function returns true
 
     } 
+
+    pub fn detect_hits(&mut self,invaders:&mut Invaders)->bool{
+        let mut hit_something = false;
+        for shot in self.shots.iter_mut(){
+            if !shot.exploding{
+                if invaders.kill_invader_at(shot.x, shot.y){
+                    hit_something = true;
+                    shot.explode();
+                }
+            }
+        }
+        hit_something
+    }
 }
 
 impl Drawable for Player{
